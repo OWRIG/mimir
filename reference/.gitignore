@@ -1,0 +1,5 @@
+# 整个 reference 目录是本地参考资料，不上云。
+# 例外：保留本目录的 .gitignore 和 README，让其它协作者知道这套约定。
+*
+!.gitignore
+!README.md
