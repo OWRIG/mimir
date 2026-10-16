@@ -4,7 +4,7 @@
 
 技术架构、包职责、数据模型和关键机制只认根目录的 `ARCHITECTURE.md`，本文不复述。动手前先读它；改动涉及包边界、数据模型、对外接口或新的有状态组件时，同一次提交里同步更新它。
 
-> 现状（2026-10-16）：只有设计稿，代码骨架尚未搭建。下面的命令和目录是约定，落地时以实际 `package.json` 为准，并回写本文。
+> 现状（2026-10-16）：v0 骨架已落地，跑通了「登录 → 订阅 → worker 抓取 → 时间线阅读」这一条纵向链路。MCP、AI 摘要、推送、通讯录同步、Collection 与管理后台尚未实现。
 
 ## 工程原则
 
@@ -21,6 +21,8 @@ bun workspaces：
 - `apps/web`：Vite + React SPA，界面通过 react-i18next 做多语言（默认 `zh-CN`，另有 `en`）。
 - `packages/shared`：zod 契约和类型，只依赖 `zod`。
 - `packages/sources`：信息源 Provider、站点适配器、Pipeline transforms。**不碰数据库，不知道用户和订阅。**
+- `e2e/`：Playwright 用户旅程测试，独立 workspace。
+- `openspec/`：行为规格（`specs/`）和变更提案（`changes/`）。
 - `deploy/`：docker compose 和镜像构建。
 - `docs/`：面向使用者的部署、配置、飞书接入文档；`docs/memos/` 放设计决策 memo，命名为 `YYYY-MM-DD-<slug>.md`。
 - `reference/`：git-ignored 的上游项目（Folo、TrendRadar 等），用法见 `reference/README.md`。
@@ -50,13 +52,31 @@ bun workspaces：
 - ID 用 UUIDv7、时间用 `timestamptz`，都由应用代码生成（Drizzle `$defaultFn`），不用 PG 函数做默认值。表和关键列在 schema 里写 JSDoc 注释（Drizzle 不生成 DB comment，不为此手写 DDL）。
 - 源数据（`items`）和 AI 派生数据（`item_summaries`、`item_domains`）分表存放，派生数据要能整体删掉重算。
 
-## 命令（约定）
+## 命令
 
-- `bun install`；`bun dev`：同时启动 server（`MIMIR_ROLE=all`）和 web 的 Vite dev server。
-- `bun check`：类型检查 + oxlint + oxfmt 检查，只读不改文件。
-- `bun test`：单元测试和 fixture 测试；涉及数据库的测试用独立的测试库。
-- `bun db:generate` / `bun db:migrate`：生成和执行迁移。
-- 改完至少跑与改动相关的 `bun test` 和 `bun check`，汇报时如实给出结果。
+- `bun install`；`bun dev:db`：用 docker compose 起本地 Postgres（`127.0.0.1:55432`）。本机用 OrbStack，不用 Docker Desktop。
+- `bun dev`：同时启动 server（读根目录 `.env`，`MIMIR_ROLE=all`）和 web 的 Vite dev server（`/api` 代理到 `:3000`）。
+- `bun check`：各包类型检查 + oxlint + oxfmt 检查 + OpenSpec strict 校验，只读不改文件。`bun fmt` 修格式。
+- `bun run test`：全部单元、fixture 和数据库集成测试。路径必须带 `./`（脚本里已写好），否则 `bun test` 的子串匹配会扫进 `reference/` 里上游项目的测试。
+- `bun run e2e`：构建 web 后跑 Playwright。首次需要 `cd e2e && bunx playwright install chromium --only-shell`。
+- `bun db:generate` / `bun db:migrate`：生成和执行迁移。server 启动时默认自动迁移（`MIMIR_AUTO_MIGRATE`）。
+- 改完至少跑与改动相关的测试和 `bun check`；动到 web 交互或 API 契约时再跑 `bun run e2e`。汇报时如实给出结果。
+
+## 测试
+
+- 新功能和 bug 修复都要带测试；修 bug 先写能复现的失败用例。
+- `packages/sources`：不访问真实网络。HTTP 通过 `createHttpClient({ fetch, lookup })` 注入假实现（见 `src/test-utils.ts`），站点适配器用 `__fixtures__/` 里录制的响应。
+- `apps/server`：涉及数据库的逻辑直接对真实 Postgres 测试（`src/test/db.ts`：`TEST_DATABASE_URL`，默认 `mimir_test` 库，自动建库迁移，用例前 `resetDb()` 清表），不 mock Drizzle。数据范围、调度认领、水位线这类不变量必须有测试覆盖。路由用 `app.request()` 测完整中间件链。
+- `apps/web`：纯函数和 i18n key 一致性用 `bun test`；交互行为交给 e2e。
+- `e2e/`：按用户旅程组织（一个 spec 覆盖一条完整路径），用 role / label 定位元素，不依赖 CSS 类名。数据源用 `e2e/fixtures/` 和本地 fixture 服务，不访问外网。
+- 断言要能失败：不写恒真断言，不断言依赖 ICU、时区或运行环境的具体措辞。
+
+## 行为规格（OpenSpec）
+
+- `openspec/specs/<capability>/spec.md` 是用户可观察行为的规格（需求 + 场景），中文书写。
+- 改变可观察行为（新功能、改语义、改接口）时先写变更提案：`/opsx:propose` 或在 `openspec/changes/<change>/` 下写 proposal、specs 增量、tasks；实现完成后 `/opsx:archive` 归档并合并进 specs。tasks 里必须包含测试，最后一项是 `bun check` + `bun run test` + `bun run e2e`。
+- 纯重构、依赖升级、文档和测试补充不需要提案。
+- 提案只写行为和约束；实现细节和架构取舍写进 `ARCHITECTURE.md` 或 memo。
 
 ## 约定
 

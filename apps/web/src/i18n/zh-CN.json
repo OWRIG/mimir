@@ -1,0 +1,43 @@
+{
+  "app": { "name": "Mimir" },
+  "auth": {
+    "title": "登录 Mimir",
+    "subtitle": "组织的信息渠道",
+    "email": "邮箱",
+    "password": "密码",
+    "name": "姓名",
+    "signIn": "登录",
+    "signUp": "注册",
+    "switchToSignUp": "没有账号？注册",
+    "switchToSignIn": "已有账号？登录",
+    "withFeishu": "使用飞书登录",
+    "or": "或",
+    "signOut": "退出登录",
+    "failed": "登录失败：{{message}}"
+  },
+  "reader": {
+    "all": "全部",
+    "unread": "未读",
+    "starred": "星标",
+    "subscriptions": "订阅",
+    "addPlaceholder": "RSS 地址、rsshub:// 或 site:// 路由",
+    "add": "订阅",
+    "adding": "订阅中…",
+    "addFailed": "订阅失败：{{message}}",
+    "noSubscriptions": "还没有订阅，先添加一个源吧",
+    "empty": "这里还没有内容",
+    "fetching": "新订阅的源会在几秒内完成首次抓取",
+    "loadMore": "加载更多",
+    "selectItem": "选择一篇文章开始阅读",
+    "openOriginal": "打开原文",
+    "markRead": "标为已读",
+    "markUnread": "标为未读",
+    "star": "星标",
+    "unstar": "取消星标",
+    "markAllRead": "全部标为已读",
+    "unsubscribe": "取消订阅",
+    "contentPurged": "正文已过保留期，请打开原文阅读",
+    "feedDead": "该源长期抓取失败，已暂停",
+    "feedError": "最近一次抓取失败"
+  }
+}

@@ -1,0 +1,63 @@
+# 生产部署：在仓库根目录执行
+#   cp .env.example deploy/.env   # 填写 MIMIR_PUBLIC_URL、MIMIR_SECRET_KEY、MIMIR_DOMAIN、POSTGRES_PASSWORD 等
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# 可选自建 RSSHub：追加 --profile rsshub，并设置 MIMIR_RSSHUB_URLS=http://rsshub:1200
+name: mimir
+
+services:
+  mimir:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: mimir:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://mimir:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}@postgres:5432/mimir
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 只暴露给 caddy；不使用 caddy 时改为 '127.0.0.1:3000:3000' 交给已有的反向代理
+    expose: ['3000']
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mimir
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: mimir
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mimir']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      MIMIR_DOMAIN: ${MIMIR_DOMAIN:?set MIMIR_DOMAIN in deploy/.env}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [mimir]
+
+  rsshub:
+    profiles: [rsshub]
+    # 生产环境建议固定到具体的日期 tag
+    image: diygod/rsshub:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: memory
+    expose: ['1200']
+
+volumes:
+  pg-data:
+  caddy-data:
+  caddy-config:

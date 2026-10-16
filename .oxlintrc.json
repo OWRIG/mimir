@@ -1,5 +1,15 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "categories": { "correctness": "error", "suspicious": "warn" },
-  "ignorePatterns": ["reference/**", "**/dist/**", "**/drizzle/**", "**/*.gen.ts"]
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "ignorePatterns": [
+    "reference/**",
+    "**/dist/**",
+    "**/drizzle/**",
+    "**/*.gen.ts",
+    ".claude/**",
+    ".agents/**"
+  ]
 }

@@ -1,0 +1,43 @@
+{
+  "app": { "name": "Mimir" },
+  "auth": {
+    "title": "Sign in to Mimir",
+    "subtitle": "Your organization's information hub",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "switchToSignUp": "No account? Sign up",
+    "switchToSignIn": "Have an account? Sign in",
+    "withFeishu": "Continue with Feishu",
+    "or": "or",
+    "signOut": "Sign out",
+    "failed": "Sign-in failed: {{message}}"
+  },
+  "reader": {
+    "all": "All",
+    "unread": "Unread",
+    "starred": "Starred",
+    "subscriptions": "Subscriptions",
+    "addPlaceholder": "Feed URL, rsshub:// or site:// route",
+    "add": "Subscribe",
+    "adding": "Subscribing…",
+    "addFailed": "Subscribe failed: {{message}}",
+    "noSubscriptions": "No subscriptions yet. Add a source to get started",
+    "empty": "Nothing here yet",
+    "fetching": "New sources are fetched within a few seconds",
+    "loadMore": "Load more",
+    "selectItem": "Select an article to start reading",
+    "openOriginal": "Open original",
+    "markRead": "Mark as read",
+    "markUnread": "Mark as unread",
+    "star": "Star",
+    "unstar": "Unstar",
+    "markAllRead": "Mark all as read",
+    "unsubscribe": "Unsubscribe",
+    "contentPurged": "Content expired from retention, open the original to read",
+    "feedDead": "This source kept failing and has been paused",
+    "feedError": "The last fetch failed"
+  }
+}

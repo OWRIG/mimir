@@ -69,6 +69,8 @@ mimir/
 ├── packages/
 │   ├── shared/        # zod 契约与类型（前后端共用），framework-free
 │   └── sources/       # 信息源抽象：Provider、站点适配器、Pipeline transforms；无 DB 依赖
+├── e2e/               # Playwright 用户旅程测试（独立 workspace，不被其他包依赖）
+├── openspec/          # 行为规格（specs/）与变更提案（changes/），见「工程约束」
 ├── deploy/            # docker compose、Dockerfile、反向代理配置
 ├── docs/              # 用户文档（部署、配置、飞书接入）与设计 memo（docs/memos/）
 └── reference/         # git-ignored 上游参考项目，见 reference/README.md
@@ -87,21 +89,21 @@ mimir/
 
 | 层 | 选型 | 说明 |
 | --- | --- | --- |
-| 运行时 | Bun 1.3+ | 用原生 `fetch` 的 `proxy` 选项实现按源走代理；`Bun.randomUUIDv7()` 生成 ID |
+| 运行时 | Bun 1.4+ | 用原生 `fetch` 的 `proxy` 选项实现按源走代理；`Bun.randomUUIDv7()` 生成 ID |
 | HTTP | Hono 4 + `@hono/zod-validator` | 用 Hono RPC（`hc`）给 web 提供端到端类型 |
 | DB | PostgreSQL 17 + Drizzle ORM + `drizzle-kit` | 驱动统一用 `pg`；迁移文件入库 |
-| 鉴权 | better-auth | 飞书走 genericOAuth 插件；另支持通用 OIDC 和本地密码（试用场景）。Web 用 session；MCP、API、RSS 输出用个人访问令牌（PAT） |
+| 鉴权 | better-auth 1.7 | 飞书走 genericOAuth 插件（1.7 起通用 provider 与内置 provider 共用 `signIn.social` 和 `/api/auth/callback/<id>`）；另支持通用 OIDC 和本地密码（试用场景）。Web 用 session；MCP、API、RSS 输出用个人访问令牌（PAT） |
 | 飞书 | `@larksuiteoapi/node-sdk` | 通讯录和消息；同时支持飞书（`open.feishu.cn`）和 Lark 国际版（`open.larksuite.com`） |
 | MCP | `@modelcontextprotocol/sdk`，Streamable HTTP | 挂在 `/mcp` |
 | LLM | Vercel AI SDK（`ai` + `@ai-sdk/openai-compatible`） | 用 `generateObject` 加 zod schema 得到结构化输出 |
 | Feed 解析 | `feedsmith` | 支持 RSS、Atom、RDF、JSON Feed |
 | HTML | `cheerio`（站点适配器，与 RSSHub 一致）、`@mozilla/readability` + `linkedom`（正文提取）、`sanitize-html`（入库前清洗） | |
 | 定时 | `croner` | 只用于 worker 内的周期任务（通讯录同步、摘要推送、清理），不负责抓取调度 |
-| 前端 | React 19 + Vite 7 + TanStack Router / Query / Virtual + Tailwind CSS 4 + shadcn/ui + react-i18next | 界面多语言，默认 `zh-CN`，另提供 `en` |
-| 工程 | TypeScript strict、oxlint + oxfmt、`bun test` | |
+| 前端 | React 19 + Vite 8 + TanStack Router（代码式路由）/ Query + Tailwind CSS 4 + react-i18next | 界面多语言，默认 `zh-CN`，另提供 `en`。组件按需手写；列表变长再引入 TanStack Virtual，需要成套组件时再评估 shadcn/ui |
+| 工程 | TypeScript 7 strict、oxlint + oxfmt、`bun test`、Playwright、OpenSpec | 见「工程约束」 |
 | 日志 | `pino`，输出 JSON 到 stdout | |
 
-> 依赖库的版本和与 Bun 的兼容性在搭骨架时逐个验证，不兼容的在这里改掉。
+> 以上依赖在 v0 骨架阶段逐个在 Bun 上验证过，结论见 `docs/memos/2026-10-16-v0-skeleton.md`。
 
 ## 集成（`apps/server/src/integrations/`）
 
@@ -214,14 +216,14 @@ URI 必须**规范化**以后再入库（scheme 和 host 转小写、去掉末�
 
 ```ts
 interface SourceProvider {
-  scheme: string
-  fetch(uri: URL, ctx: FetchContext): Promise<RawFeed>
+  schemes: string[]         // 例如 ['http:', 'https:']
+  fetch(uri: URL, ctx: FetchContext): Promise<ProviderResult>   // { feed: RawFeed, etag?, lastModified? } | { notModified: true }
 }
 
 interface FetchContext {
   http: HttpClient          // 已经绑定好代理、超时、UA、体积上限、SSRF 防护、按 host 限速
   conditional: { etag?: string; lastModified?: string }
-  signal: AbortSignal
+  signal?: AbortSignal
 }
 
 // site:// 适配器：形态与 RSSHub route 对齐（Hono 风格的 path、parameters、example），handler 输出 Data 子集
@@ -259,7 +261,8 @@ interface SiteRoute {
 - **自适应间隔**：根据近期发文间隔推算，限制在 `[10m, 24h]`，默认 30 分钟，`config` 可以覆盖。
 - **失败退避**：指数退避，上限 24 小时；连续失败超过阈值（例如 7 天）标记为 `dead` 并在 UI 提示，人工恢复。
 - **入库**：按 `(feed_id, guid_hash)` upsert。已存在的条目只在标题或正文有实质变化时更新，不制造"新条目"。新条目入库时，在同一个事务里为命中的 `push_rules` 写入 `deliveries`。
-- **SSRF 防护**：订阅地址由用户输入，所以必须在 DNS 解析之后拒绝私网、回环、链路本地地址和云厂商元数据地址（如 `169.254.169.254`、阿里云的 `100.100.100.200`），重定向的每一跳都要重新校验。这一步在 `HttpClient` 里统一实现。
+- **SSRF 防护**：订阅地址由用户输入，所以必须在 DNS 解析之后拒绝私网、回环、链路本地地址和云厂商元数据地址（如 `169.254.169.254`、阿里云的 `100.100.100.200`），重定向的每一跳都要重新校验。这一步在 `HttpClient` 里统一实现：默认只放行公网单播地址，`MIMIR_FETCH_ALLOWED_CIDRS` 可以显式追加网段（典型场景是本机 fake-IP 代理返回的 `198.18.0.0/15`）。
+- **停止抓取**：没有订阅者、也不在任何 Collection 里的 feed 不再被认领，数据保留；重新被订阅时立即恢复。
 - **周期任务**（croner）：通讯录同步、`digest` 推送、正文保留期清理、`dead` feed 汇总、过期令牌清理。
 
 ## AI 摘要
@@ -311,15 +314,26 @@ interface SiteRoute {
 - 主要变量：
   - 基础：`DATABASE_URL`、`MIMIR_ROLE`、`MIMIR_PUBLIC_URL`、`MIMIR_SECRET_KEY`、`MIMIR_DEFAULT_LOCALE`
   - 集成：`MIMIR_AUTH_PROVIDERS`（如 `feishu,password`）、`MIMIR_DIRECTORY_PROVIDER`（`feishu|manual`）、`MIMIR_FEISHU_APP_ID` / `MIMIR_FEISHU_APP_SECRET` / `MIMIR_FEISHU_DOMAIN`（`feishu|lark`）、`MIMIR_OIDC_*`
-  - 抓取：`MIMIR_RSSHUB_URLS`、`MIMIR_FETCH_PROXY`
+  - 抓取：`MIMIR_RSSHUB_URLS`、`MIMIR_FETCH_PROXY`、`MIMIR_FETCH_ALLOWED_CIDRS`、`MIMIR_FETCH_CONCURRENCY`
   - AI：`MIMIR_LLM_BASE_URL` / `MIMIR_LLM_API_KEY` / `MIMIR_LLM_SUMMARY_MODEL`、`MIMIR_LLM_DAILY_TOKEN_BUDGET`
   - 数据：`MIMIR_CONTENT_RETENTION_DAYS`
 
 ## 部署
 
-- `deploy/docker-compose.yml` 包含：`mimir`（`MIMIR_ROLE=all`）、`postgres`、`caddy`（TLS 和反向代理）、`rsshub`（profile 可选，不带 puppeteer）。镜像发布到 GHCR。
+- `deploy/Dockerfile` 构建单镜像（web 构建产物由 server 通过 `MIMIR_WEB_DIST` 托管）。`deploy/docker-compose.yml` 包含：`mimir`（`MIMIR_ROLE=all`）、`postgres`、`caddy`（TLS 和反向代理，配置见 `deploy/Caddyfile`）、`rsshub`（`--profile rsshub` 可选，不带 puppeteer）。部署配置写在 `deploy/.env`。镜像计划发布到 GHCR。
+- 本地开发只用 `deploy/docker-compose.dev.yml` 起 Postgres，端口绑定 `127.0.0.1:55432`（显式绑回环地址，避免与本机其他服务或 OrbStack 的端口转发冲突）。
 - 2 核 4G 的内存预算：mimir 约 500MB，Postgres 1–1.5GB（调整 `shared_buffers`），rsshub 约 300MB，其余留给系统和页缓存。触发升配的条件：需要 puppeteer 类的 RSSHub 路由，或者 worker 的抓取延迟持续超过调度间隔。
 - 备份：每天执行 `pg_dump`，上传到 S3 兼容的对象存储（如阿里云 OSS）。
+
+## 工程约束
+
+- **测试分层**：
+  - `packages/sources`：纯单元测试 + fixture，网络通过注入的假 `fetch` / `lookup` 模拟，不访问真实网络。
+  - `apps/server`：集成测试直接连真实 Postgres（`TEST_DATABASE_URL`，默认 dev 实例上的 `mimir_test` 库，首次自动建库并迁移，每个用例前清表），不 mock 数据库。路由测试通过 `app.request()` 走完整中间件链。
+  - `apps/web`：纯函数单测，以及 `zh-CN` / `en` 文案 key 一致性测试。
+  - `e2e/`：Playwright 用户旅程。启动真实 server（托管 web 构建产物）、独立的 `mimir_e2e` 库，以及本地 fixture feed 服务；每个旅程覆盖一条完整用户路径，而不是逐个点按钮。
+- **行为规格**：`openspec/specs/` 用 OpenSpec 记录用户可观察行为（需求 + 场景）。改变可观察行为的工作先写 `openspec/changes/<change>/` 提案，实现合入时归档并更新 specs。纯重构、依赖升级、文档改动不需要提案。`bun check` 会对所有 spec 和 change 做 strict 校验。
+- **CI**（`.github/workflows/ci.yml`）：`bun check`、`bun run test`、`bun run e2e`，Postgres 由 service container 提供。
 
 ## 演进位置（明确不在当前范围）
 

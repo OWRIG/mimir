@@ -10,6 +10,11 @@
     "**/*.gen.ts",
     "**/__fixtures__/**",
     "LICENSE",
-    "*.md"
+    "*.md",
+    "openspec/**",
+    ".claude/**",
+    ".agents/**",
+    "e2e/test-results/**",
+    "e2e/playwright-report/**"
   ]
 }

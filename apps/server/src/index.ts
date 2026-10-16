@@ -16,7 +16,7 @@ if (config.MIMIR_AUTO_MIGRATE) await runMigrations(pool)
 const stops: Array<() => Promise<void> | void> = []
 
 if (config.MIMIR_ROLE !== 'worker') {
-  const app = createApp({ db, auth: createAuth(config, db) })
+  const app = createApp({ db, auth: createAuth(config, db) }, config)
   if (config.MIMIR_WEB_DIST) {
     const root = config.MIMIR_WEB_DIST
     app.use('/*', serveStatic({ root }))

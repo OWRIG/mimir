@@ -4,7 +4,31 @@
 
 An open-source, self-hosted information hub for organizations: aggregate external feeds, organize them by department and domain, deliver to people (web reader, IM push), and expose them to AI agents via MCP, API, and RSS. Lightweight AI (summaries only). Feishu/Lark first.
 
-> **状态 / Status**：设计阶段，尚无可运行代码。Design stage — no runnable code yet.
+> **状态 / Status**：v0 骨架。可以登录、订阅、自动抓取和阅读；MCP、AI 摘要、推送、通讯录同步尚未实现。Early skeleton — login, subscribe, fetch, and read work; MCP, AI summaries, push and directory sync are not implemented yet.
+
+## 本地开发 / Development
+
+需要 Bun 1.4+ 和 Docker（macOS 推荐 OrbStack）。Requires Bun 1.4+ and Docker.
+
+```sh
+bun install
+cp .env.example .env          # 填写 MIMIR_SECRET_KEY：openssl rand -base64 48
+bun dev:db                    # Postgres on 127.0.0.1:55432
+bun dev                       # server :3000 + web http://localhost:5173
+```
+
+```sh
+bun check                     # typecheck + lint + format + spec validation
+bun run test                  # unit + DB integration tests
+bun run e2e                   # Playwright journeys
+```
+
+## 部署 / Deployment
+
+```sh
+cp .env.example deploy/.env   # 填写 MIMIR_PUBLIC_URL、MIMIR_SECRET_KEY、MIMIR_DOMAIN、POSTGRES_PASSWORD
+docker compose -f deploy/docker-compose.yml up -d --build
+```
 
 - 架构 / Architecture：[ARCHITECTURE.md](ARCHITECTURE.md)
 - 贡献者规范 / Contributor & agent guide：[AGENTS.md](AGENTS.md)

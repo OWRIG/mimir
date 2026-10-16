@@ -19,7 +19,7 @@ const config = parseConfig({
   MIMIR_SECRET_KEY: 'test-secret-'.padEnd(40, 'x'),
   MIMIR_AUTH_PROVIDERS: 'password',
 })
-const app = createApp({ db, auth: createAuth(config, db) })
+const app = createApp({ db, auth: createAuth(config, db) }, config)
 
 async function signUp(email = `u${Bun.randomUUIDv7()}@example.com`) {
   const res = await app.request(`${BASE}/api/auth/sign-up/email`, {
@@ -40,6 +40,13 @@ async function signUp(email = `u${Bun.randomUUIDv7()}@example.com`) {
 }
 
 describe('API', () => {
+  test('公开配置无需登录', async () => {
+    expect(await json(app.request(`${BASE}/api/public/config`))).toEqual({
+      authProviders: ['password'],
+      defaultLocale: 'zh-CN',
+    })
+  })
+
   test('未登录返回 401', async () => {
     expect((await app.request(`${BASE}/api/me`)).status).toBe(401)
     expect((await app.request(`${BASE}/api/items`)).status).toBe(401)

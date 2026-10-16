@@ -1,0 +1,5 @@
+# 自动申请 HTTPS 证书；MIMIR_DOMAIN 需已解析到本机
+{$MIMIR_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy mimir:3000
+}

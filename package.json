@@ -3,20 +3,24 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "e2e"
   ],
   "type": "module",
   "scripts": {
     "dev": "bun run --filter '@mimir/server' --filter '@mimir/web' dev",
     "dev:db": "docker compose -f deploy/docker-compose.dev.yml up -d",
     "build": "bun run --filter '@mimir/web' build",
-    "check": "bun run --filter '*' typecheck && oxlint && oxfmt --check",
+    "check": "bun run --filter '*' typecheck && oxlint && oxfmt --check && bun run spec:check",
     "fmt": "oxfmt",
     "test": "bun test ./packages ./apps",
     "db:generate": "bun run --filter '@mimir/server' db:generate",
-    "db:migrate": "bun run --filter '@mimir/server' db:migrate"
+    "db:migrate": "bun run --filter '@mimir/server' db:migrate",
+    "e2e": "bun run build && bun run --filter '@mimir/e2e' test",
+    "spec:check": "OPENSPEC_TELEMETRY=0 openspec validate --all --strict --no-interactive"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "1.14.2",
     "@types/bun": "^1.4.3",
     "oxfmt": "^0.73.0",
     "oxlint": "^1.88.0",

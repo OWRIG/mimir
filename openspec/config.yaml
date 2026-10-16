@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  Language: zh-CN
+  All artifacts must be written in zh-CN.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Project: Mimir —— 开源、自托管的组织级信息渠道服务（外部 RSS / RSSHub / 站点适配 → 去重整理 → Web 阅读、IM 推送、MCP/API/RSS 输出）。
+  技术架构与边界只认根目录 ARCHITECTURE.md，工程规则只认 AGENTS.md；规格只描述用户可观察的行为，不复述实现。
+  栈：Bun + Hono + Drizzle/PostgreSQL（apps/server）、Vite + React（apps/web）、packages/sources（信息源，无 DB 依赖）。
+
+rules:
+  proposal:
+    - 写清楚"不在本次范围内"的内容
+    - 涉及包边界、数据模型、对外接口或新的有状态组件时，说明需要同步修改 ARCHITECTURE.md 的哪一节
+    - 新增配置项要说明归属哪一层（环境变量或数据库）以及未配置时的降级行为
+  specs:
+    - 每条 Requirement 至少一个 Scenario，Scenario 用 WHEN/THEN 描述可验证的外部行为
+    - 涉及数据范围的行为必须注明经过"用户可见 feed 集合"这一唯一规则
+  tasks:
+    - 每个任务都包含对应的测试（sources 用 fixture 单测，server 用真实 Postgres 集成测试，关键用户旅程用 Playwright E2E）
+    - 最后一项任务固定为：bun check、bun run test 通过，涉及界面时 bun e2e 通过

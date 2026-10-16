@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+reference
+.git
+.env
+.env.*
+!.env.example
+e2e/test-results
+e2e/playwright-report
+coverage
+*.log
+.DS_Store
