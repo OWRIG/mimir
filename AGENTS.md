@@ -47,7 +47,7 @@ bun workspaces：
 ## 数据库
 
 - Drizzle schema 是表结构的唯一事实源，迁移用 `drizzle-kit generate` 生成并入库，不手写 DDL，也不改已发布的迁移文件。
-- ID 用 UUIDv7、时间用 `timestamptz`，都由应用代码生成并显式写入。表和列都要写 comment。
+- ID 用 UUIDv7、时间用 `timestamptz`，都由应用代码生成（Drizzle `$defaultFn`），不用 PG 函数做默认值。表和关键列在 schema 里写 JSDoc 注释（Drizzle 不生成 DB comment，不为此手写 DDL）。
 - 源数据（`items`）和 AI 派生数据（`item_summaries`、`item_domains`）分表存放，派生数据要能整体删掉重算。
 
 ## 命令（约定）

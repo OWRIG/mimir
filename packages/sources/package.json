@@ -1,0 +1,23 @@
+{
+  "name": "@mimir/sources",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "cheerio": "^1.2.0",
+    "feedsmith": "^3.0.1",
+    "ipaddr.js": "^2.5.0",
+    "linkedom": "^0.18.13",
+    "sanitize-html": "^2.18.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/sanitize-html": "^2.16.2"
+  }
+}

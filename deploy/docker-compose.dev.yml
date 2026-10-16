@@ -1,0 +1,22 @@
+# 本地开发用：只起 Postgres。用法：bun dev:db
+name: mimir-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mimir
+      POSTGRES_PASSWORD: mimir
+      POSTGRES_DB: mimir
+    ports:
+      - '127.0.0.1:${MIMIR_DEV_PG_PORT:-55432}:5432'
+    volumes:
+      - mimir-dev-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mimir']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  mimir-dev-pg:

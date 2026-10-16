@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Example Blog</title>
+    <link>https://blog.example.com/</link>
+    <description>An example</description>
+    <item>
+      <title>First post</title>
+      <link>https://blog.example.com/posts/1?utm_source=rss</link>
+      <guid isPermaLink="false">post-1</guid>
+      <pubDate>Tue, 10 Jun 2025 04:00:00 GMT</pubDate>
+      <description>Short &lt;b&gt;summary&lt;/b&gt;</description>
+      <content:encoded><![CDATA[<p>Hello <img src="/img/a.png"> <a href="/about">about</a></p><script>alert(1)</script>]]></content:encoded>
+      <dc:creator>Alice</dc:creator>
+      <category>news</category>
+    </item>
+    <item>
+      <title>No guid</title>
+      <link>https://blog.example.com/posts/2</link>
+    </item>
+  </channel>
+</rss>
